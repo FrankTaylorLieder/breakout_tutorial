@@ -7,6 +7,8 @@ const BALL_SIZE: f32 = 15_f32;
 const BALL_SPEED_INITIAL: f32 = 200_f32;
 const BALL_SPEED_INCREMENT: f32 = 50_f32;
 const LIVES_INITIAL: i32 = 3;
+//const NUM_BLOCKS: (i32, i32) = (6, 6);
+const NUM_BLOCKS: (i32, i32) = (3, 1);
 
 pub fn draw_title_text(text: &str, font: Font) {
     let dims = measure_text(text, Some(font), 50u16, 1.0_f32);
@@ -166,18 +168,12 @@ fn ball_speed(level: i32) -> f32 {
     BALL_SPEED_INITIAL + (BALL_SPEED_INCREMENT * (level as f32))
 }
 
-fn reset_game(
+fn reset_level(
     level: &mut i32,
-    score: &mut i32,
     blocks: &mut Vec<Block>,
     balls: &mut Vec<Ball>,
     player: &mut Player,
 ) {
-    *score = 0;
-    level_up(level, blocks, balls, player);
-}
-
-fn level_up(level: &mut i32, blocks: &mut Vec<Block>, balls: &mut Vec<Ball>, player: &mut Player) {
     *player = Player::new();
     balls.clear();
     balls.push(Ball::new(
@@ -191,8 +187,25 @@ fn level_up(level: &mut i32, blocks: &mut Vec<Block>, balls: &mut Vec<Ball>, pla
     init_blocks(blocks);
 }
 
+fn reset_game(
+    level: &mut i32,
+    score: &mut i32,
+    blocks: &mut Vec<Block>,
+    balls: &mut Vec<Ball>,
+    player: &mut Player,
+) {
+    *level = 0;
+    *score = 0;
+    reset_level(level, blocks, balls, player);
+}
+
+fn level_up(level: &mut i32, blocks: &mut Vec<Block>, balls: &mut Vec<Ball>, player: &mut Player) {
+    *level += 1;
+    reset_level(level, blocks, balls, player);
+}
+
 fn init_blocks(blocks: &mut Vec<Block>) {
-    let (width, height) = (6, 6);
+    let (width, height) = NUM_BLOCKS;
     let padding = 5_f32;
     let total_block_size = BLOCK_SIZE + vec2(padding, padding);
     let board_start_pos = vec2(
@@ -280,10 +293,16 @@ async fn main() {
                     game_state = GameState::LevelCompleted;
                 }
             }
-            GameState::LevelCompleted | GameState::Dead => {
+            GameState::LevelCompleted => {
                 if is_key_pressed(KeyCode::Space) {
                     game_state = GameState::Menu;
                     level_up(&mut level, &mut blocks, &mut balls, &mut player);
+                }
+            }
+            GameState::Dead => {
+                if is_key_pressed(KeyCode::Space) {
+                    game_state = GameState::Menu;
+                    reset_game(&mut level, &mut score, &mut blocks, &mut balls, &mut player);
                 }
             }
         }
