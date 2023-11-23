@@ -173,7 +173,10 @@ fn ball_speed(level: i32) -> f32 {
 }
 
 fn player_width(level: i32) -> f32 {
-    PLAYER_WIDTH_INITIAL - (PLAYER_WIDTH_DECREMENT * (level as f32))
+    f32::max(
+        PLAYER_WIDTH_INITIAL - (PLAYER_WIDTH_DECREMENT * (level as f32)),
+        PLAYER_WIDTH_MIN,
+    )
 }
 
 fn reset_level(
