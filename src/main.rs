@@ -1,17 +1,19 @@
 use macroquad::prelude::*;
 
-const BLOCK_SIZE: Vec2 = const_vec2!([100f32, 40f32]);
-const PLAYER_SIZE: Vec2 = const_vec2!([150f32, 40f32]);
-const PLAYER_SPEED: f32 = 700f32;
-const BALL_SIZE: f32 = 50f32;
-const BALL_SPEED: f32 = 400f32;
+const BLOCK_SIZE: Vec2 = Vec2::from_array([100_f32, 40_f32]);
+const PLAYER_SIZE: Vec2 = Vec2::from_array([150_f32, 40_f32]);
+const PLAYER_SPEED: f32 = 700_f32;
+const BALL_SIZE: f32 = 25_f32;
+const BALL_SPEED_INITIAL: f32 = 200_f32;
+const BALL_SPEED_INCREMENT: f32 = 50_f32;
+const LIVES_INITIAL: i32 = 3;
 
 pub fn draw_title_text(text: &str, font: Font) {
-    let dims = measure_text(text, Some(font), 50u16, 1.0f32);
+    let dims = measure_text(text, Some(font), 50u16, 1.0_f32);
     draw_text_ex(
         text,
-        screen_width() * 0.5f32 - dims.width * 0.5f32,
-        screen_height() * 0.5f32 - dims.height * 0.5f32,
+        screen_width() * 0.5_f32 - dims.width * 0.5_f32,
+        screen_height() * 0.5_f32 - dims.height * 0.5_f32,
         TextParams {
             font,
             font_size: 50u16,
@@ -30,30 +32,32 @@ pub enum GameState {
 
 struct Player {
     rect: Rect,
+    lives: i32,
 }
 
 impl Player {
     pub fn new() -> Self {
         Self {
             rect: Rect::new(
-                screen_width() * 0.5f32 - PLAYER_SIZE.x * 0.5f32,
-                screen_height() - 100f32,
+                screen_width() * 0.5_f32 - PLAYER_SIZE.x * 0.5_f32,
+                screen_height() - 100_f32,
                 PLAYER_SIZE.x,
                 PLAYER_SIZE.y,
             ),
+            lives: LIVES_INITIAL,
         }
     }
 
     pub fn update(&mut self, dt: f32) {
         let x_move = match (is_key_down(KeyCode::Left), is_key_down(KeyCode::Right)) {
-            (true, false) => -1f32,
-            (false, true) => 1f32,
-            _ => 0f32,
+            (true, false) => -1_f32,
+            (false, true) => 1_f32,
+            _ => 0_f32,
         };
         self.rect.x += x_move * dt * PLAYER_SPEED;
 
-        if self.rect.x < 0f32 {
-            self.rect.x = 0f32;
+        if self.rect.x < 0_f32 {
+            self.rect.x = 0_f32;
         }
         if self.rect.x > screen_width() - self.rect.w {
             self.rect.x = screen_width() - self.rect.w;
@@ -100,27 +104,29 @@ impl Block {
 pub struct Ball {
     rect: Rect,
     vel: Vec2,
+    speed: f32,
 }
 
 impl Ball {
     pub fn new(pos: Vec2) -> Self {
         Self {
             rect: Rect::new(pos.x, pos.y, BALL_SIZE, BALL_SIZE),
-            vel: vec2(rand::gen_range(-1f32, 1f32), 1f32).normalize(),
+            vel: vec2(rand::gen_range(-1_f32, 1_f32), 1_f32).normalize(),
+            speed: BALL_SPEED_INITIAL,
         }
     }
 
     pub fn update(&mut self, dt: f32) {
-        self.rect.x += self.vel.x * dt * BALL_SPEED;
-        self.rect.y += self.vel.y * dt * BALL_SPEED;
-        if self.rect.x < 0f32 {
-            self.vel.x = 1f32;
+        self.rect.x += self.vel.x * dt * self.speed;
+        self.rect.y += self.vel.y * dt * self.speed;
+        if self.rect.x < 0_f32 {
+            self.vel.x = 1_f32;
         }
         if self.rect.x > screen_width() - self.rect.w {
-            self.vel.x = -1f32;
+            self.vel.x = -1_f32;
         }
-        if self.rect.y < 0f32 {
-            self.vel.y = 1f32;
+        if self.rect.y < 0_f32 {
+            self.vel.y = 1_f32;
         }
     }
 
@@ -128,6 +134,7 @@ impl Ball {
         draw_rectangle(self.rect.x, self.rect.y, self.rect.w, self.rect.h, DARKGRAY);
     }
 }
+
 // aabb collision with positional correction
 fn resolve_collision(a: &mut Rect, vel: &mut Vec2, b: &Rect) -> bool {
     // early exit
@@ -135,8 +142,8 @@ fn resolve_collision(a: &mut Rect, vel: &mut Vec2, b: &Rect) -> bool {
         Some(intersection) => intersection,
         None => return false,
     };
-    let a_center = a.point() + a.size() * 0.5f32;
-    let b_center = b.point() + b.size() * 0.5f32;
+    let a_center = a.point() + a.size() * 0.5_f32;
+    let b_center = b.point() + b.size() * 0.5_f32;
     let to = b_center - a_center;
     let to_signum = to.signum();
     match intersection.w > intersection.h {
@@ -156,18 +163,16 @@ fn resolve_collision(a: &mut Rect, vel: &mut Vec2, b: &Rect) -> bool {
 
 fn reset_game(
     score: &mut i32,
-    player_lives: &mut i32,
     blocks: &mut Vec<Block>,
     balls: &mut Vec<Ball>,
     player: &mut Player,
 ) {
     *player = Player::new();
     *score = 0;
-    *player_lives = 3;
     balls.clear();
     balls.push(Ball::new(vec2(
-        screen_width() * 0.5f32 - BALL_SIZE * 0.5f32,
-        screen_height() * 0.5f32,
+        screen_width() * 0.5_f32 - BALL_SIZE * 0.5_f32,
+        screen_height() * 0.5_f32,
     )));
     blocks.clear();
     init_blocks(blocks);
@@ -175,11 +180,11 @@ fn reset_game(
 
 fn init_blocks(blocks: &mut Vec<Block>) {
     let (width, height) = (6, 6);
-    let padding = 5f32;
+    let padding = 5_f32;
     let total_block_size = BLOCK_SIZE + vec2(padding, padding);
     let board_start_pos = vec2(
-        (screen_width() - (total_block_size.x * width as f32)) * 0.5f32,
-        50f32,
+        (screen_width() - (total_block_size.x * width as f32)) * 0.5_f32,
+        50_f32,
     );
     for i in 0..width * height {
         let block_x = (i % width) as f32 * total_block_size.x;
@@ -202,13 +207,12 @@ async fn main() {
         .unwrap();
     let mut game_state = GameState::Menu;
     let mut score = 0;
-    let mut player_lives = 3;
     let mut player = Player::new();
     let mut blocks = Vec::new();
     let mut balls = Vec::<Ball>::new();
     balls.push(Ball::new(vec2(
-        screen_width() * 0.5f32 - BALL_SIZE * 0.5f32,
-        screen_height() * 0.6f32,
+        screen_width() * 0.5_f32 - BALL_SIZE * 0.5_f32,
+        screen_height() * 0.6_f32,
     )));
 
     init_blocks(&mut blocks);
@@ -249,12 +253,12 @@ async fn main() {
                 balls.retain(|ball| ball.rect.y < screen_height());
                 let removed_balls = balls_len - balls.len();
                 if removed_balls > 0 && balls.is_empty() {
-                    player_lives -= 1;
+                    player.lives -= 1;
                     balls.push(Ball::new(
                         player.rect.point()
-                            + vec2(player.rect.w * 0.5f32 - BALL_SIZE * 0.5f32, -50f32),
+                            + vec2(player.rect.w * 0.5_f32 - BALL_SIZE * 0.5_f32, -50_f32),
                     ));
-                    if player_lives <= 0 {
+                    if player.lives <= 0 {
                         game_state = GameState::Dead;
                     }
                 }
@@ -266,13 +270,7 @@ async fn main() {
             GameState::LevelCompleted | GameState::Dead => {
                 if is_key_pressed(KeyCode::Space) {
                     game_state = GameState::Menu;
-                    reset_game(
-                        &mut score,
-                        &mut player_lives,
-                        &mut blocks,
-                        &mut balls,
-                        &mut player,
-                    );
+                    reset_game(&mut score, &mut blocks, &mut balls, &mut player);
                 }
             }
         }
@@ -295,7 +293,7 @@ async fn main() {
                 let score_text_dim = measure_text(&score_text, Some(font), 30u16, 1.0);
                 draw_text_ex(
                     &score_text,
-                    screen_width() * 0.5f32 - score_text_dim.width * 0.5f32,
+                    screen_width() * 0.5_f32 - score_text_dim.width * 0.5_f32,
                     40.0,
                     TextParams {
                         font,
@@ -306,7 +304,7 @@ async fn main() {
                 );
 
                 draw_text_ex(
-                    &format!("lives: {}", player_lives),
+                    &format!("lives: {}", player.lives),
                     30.0,
                     40.0,
                     TextParams {
