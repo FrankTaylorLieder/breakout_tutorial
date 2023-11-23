@@ -1,7 +1,10 @@
 use macroquad::prelude::*;
 
 const BLOCK_SIZE: Vec2 = Vec2::from_array([100_f32, 40_f32]);
-const PLAYER_SIZE: Vec2 = Vec2::from_array([150_f32, 20_f32]);
+const PLAYER_WIDTH_INITIAL: f32 = 150_f32;
+const PLAYER_WIDTH_DECREMENT: f32 = 15_f32;
+const PLAYER_WIDTH_MIN: f32 = 30_f32;
+const PLAYER_HEIGHT: f32 = 20_f32;
 const PLAYER_SPEED: f32 = 700_f32;
 const BALL_SIZE: f32 = 15_f32;
 const BALL_SPEED_INITIAL: f32 = 200_f32;
@@ -38,13 +41,14 @@ struct Player {
 }
 
 impl Player {
-    pub fn new() -> Self {
+    pub fn new(level: i32) -> Self {
+        let width = player_width(level);
         Self {
             rect: Rect::new(
-                screen_width() * 0.5_f32 - PLAYER_SIZE.x * 0.5_f32,
+                screen_width() * 0.5_f32 - width * 0.5_f32,
                 screen_height() - 100_f32,
-                PLAYER_SIZE.x,
-                PLAYER_SIZE.y,
+                width,
+                PLAYER_HEIGHT,
             ),
             lives: LIVES_INITIAL,
         }
@@ -168,13 +172,17 @@ fn ball_speed(level: i32) -> f32 {
     BALL_SPEED_INITIAL + (BALL_SPEED_INCREMENT * (level as f32))
 }
 
+fn player_width(level: i32) -> f32 {
+    PLAYER_WIDTH_INITIAL - (PLAYER_WIDTH_DECREMENT * (level as f32))
+}
+
 fn reset_level(
     level: &mut i32,
     blocks: &mut Vec<Block>,
     balls: &mut Vec<Ball>,
     player: &mut Player,
 ) {
-    *player = Player::new();
+    *player = Player::new(*level);
     balls.clear();
     balls.push(Ball::new(
         vec2(
@@ -234,7 +242,7 @@ async fn main() {
     let mut game_state = GameState::Menu;
     let mut level = 0;
     let mut score = 0;
-    let mut player = Player::new();
+    let mut player = Player::new(0);
     let mut blocks = Vec::new();
     let mut balls = Vec::<Ball>::new();
 
