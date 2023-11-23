@@ -1,9 +1,9 @@
 use macroquad::prelude::*;
 
 const BLOCK_SIZE: Vec2 = Vec2::from_array([100_f32, 40_f32]);
-const PLAYER_SIZE: Vec2 = Vec2::from_array([150_f32, 40_f32]);
+const PLAYER_SIZE: Vec2 = Vec2::from_array([150_f32, 20_f32]);
 const PLAYER_SPEED: f32 = 700_f32;
-const BALL_SIZE: f32 = 25_f32;
+const BALL_SIZE: f32 = 15_f32;
 const BALL_SPEED_INITIAL: f32 = 200_f32;
 const BALL_SPEED_INCREMENT: f32 = 50_f32;
 const LIVES_INITIAL: i32 = 3;
@@ -101,6 +101,7 @@ impl Block {
         draw_rectangle(self.rect.x, self.rect.y, self.rect.w, self.rect.h, color);
     }
 }
+
 pub struct Ball {
     rect: Rect,
     vel: Vec2,
@@ -108,11 +109,11 @@ pub struct Ball {
 }
 
 impl Ball {
-    pub fn new(pos: Vec2) -> Self {
+    pub fn new(pos: Vec2, speed: f32) -> Self {
         Self {
             rect: Rect::new(pos.x, pos.y, BALL_SIZE, BALL_SIZE),
             vel: vec2(rand::gen_range(-1_f32, 1_f32), 1_f32).normalize(),
-            speed: BALL_SPEED_INITIAL,
+            speed,
         }
     }
 
@@ -161,19 +162,31 @@ fn resolve_collision(a: &mut Rect, vel: &mut Vec2, b: &Rect) -> bool {
     true
 }
 
+fn ball_speed(level: i32) -> f32 {
+    BALL_SPEED_INITIAL + (BALL_SPEED_INCREMENT * (level as f32))
+}
+
 fn reset_game(
+    level: &mut i32,
     score: &mut i32,
     blocks: &mut Vec<Block>,
     balls: &mut Vec<Ball>,
     player: &mut Player,
 ) {
-    *player = Player::new();
     *score = 0;
+    level_up(level, blocks, balls, player);
+}
+
+fn level_up(level: &mut i32, blocks: &mut Vec<Block>, balls: &mut Vec<Ball>, player: &mut Player) {
+    *player = Player::new();
     balls.clear();
-    balls.push(Ball::new(vec2(
-        screen_width() * 0.5_f32 - BALL_SIZE * 0.5_f32,
-        screen_height() * 0.5_f32,
-    )));
+    balls.push(Ball::new(
+        vec2(
+            screen_width() * 0.5_f32 - BALL_SIZE * 0.5_f32,
+            screen_height() * 0.5_f32,
+        ),
+        ball_speed(*level),
+    ));
     blocks.clear();
     init_blocks(blocks);
 }
@@ -206,16 +219,14 @@ async fn main() {
         .await
         .unwrap();
     let mut game_state = GameState::Menu;
+    let mut level = 0;
     let mut score = 0;
     let mut player = Player::new();
     let mut blocks = Vec::new();
     let mut balls = Vec::<Ball>::new();
-    balls.push(Ball::new(vec2(
-        screen_width() * 0.5_f32 - BALL_SIZE * 0.5_f32,
-        screen_height() * 0.6_f32,
-    )));
 
-    init_blocks(&mut blocks);
+    reset_game(&mut level, &mut score, &mut blocks, &mut balls, &mut player);
+
     loop {
         match game_state {
             GameState::Menu => {
@@ -239,7 +250,8 @@ async fn main() {
                                 score += 10;
                                 if block.block_type == BlockType::SpawnBallOnDeath {
                                     // spawn a ball
-                                    spawn_later.push(Ball::new(ball.rect.point()));
+                                    spawn_later
+                                        .push(Ball::new(ball.rect.point(), ball_speed(level)));
                                 }
                             }
                         }
@@ -257,6 +269,7 @@ async fn main() {
                     balls.push(Ball::new(
                         player.rect.point()
                             + vec2(player.rect.w * 0.5_f32 - BALL_SIZE * 0.5_f32, -50_f32),
+                        ball_speed(level),
                     ));
                     if player.lives <= 0 {
                         game_state = GameState::Dead;
@@ -270,7 +283,7 @@ async fn main() {
             GameState::LevelCompleted | GameState::Dead => {
                 if is_key_pressed(KeyCode::Space) {
                     game_state = GameState::Menu;
-                    reset_game(&mut score, &mut blocks, &mut balls, &mut player);
+                    level_up(&mut level, &mut blocks, &mut balls, &mut player);
                 }
             }
         }
@@ -314,12 +327,27 @@ async fn main() {
                         ..Default::default()
                     },
                 );
+
+                let level_text = format!("level: {}", level);
+                let level_text_dim = measure_text(level_text.as_str(), Some(font), 30u16, 1.0);
+
+                draw_text_ex(
+                    &format!("level: {}", level),
+                    screen_width() - level_text_dim.width - 30.0,
+                    40.0,
+                    TextParams {
+                        font,
+                        font_size: 30u16,
+                        color: BLACK,
+                        ..Default::default()
+                    },
+                );
             }
             GameState::LevelCompleted => {
-                draw_title_text(&format!("you win! {} score", score), font);
+                draw_title_text(&format!("Level completed! {} score", score), font);
             }
             GameState::Dead => {
-                draw_title_text(&format!("you DIED! {} score", score), font);
+                draw_title_text(&format!("Game over! {} score", score), font);
             }
         }
 
